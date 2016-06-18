@@ -13,10 +13,11 @@
   <!--packaging>pom</packaging-->
   <name>Mongo Oplog Reader</name>
   <properties>
+    <exec.mainClass>com.example.MongoOplogReader</exec.mainClass>
     <embed.mongo.version>1.50.5</embed.mongo.version>
     <org.mongodb.version>3.2.2</org.mongodb.version>
   </properties>
-  <dependencyManagement>
+<!--   <dependencyManagement> -->
     <dependencies>
       <dependency>
         <groupId>org.mongodb</groupId>
@@ -29,7 +30,7 @@
         <version>${embed.mongo.version}</version>
       </dependency>
     </dependencies>
-  </dependencyManagement>
+<!--   </dependencyManagement> -->
   <build>
     <resources>
       <resource>
@@ -37,5 +38,52 @@
         <directory>src/main/resources</directory>
       </resource>
     </resources>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>shade</goal>
+                </goals>
+                <phase>package</phase>
+                <configuration>
+                  <!-- 
+                  <filters>
+                    <filter>
+                      <artifact>*:*</artifact>
+                      <excludes>
+                        <exclude>META-INF/*.SF</exclude>
+                        <exclude>META-INF/*.DSA</exclude>
+                        <exclude>META-INF/*.RSA</exclude>
+                      </excludes>
+                    </filter>
+                    <filter>
+                      <artifact>joda-time:joda-time</artifact>
+                      <excludes>
+                        <exclude>org/joda/time/base/BaseDateTime.class</exclude>
+                      </excludes>
+                    </filter>
+                  </filters>
+                  -->
+                  <transformers>
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                      <manifestEntries>
+                        <Main-Class>${exec.mainClass}</Main-Class>
+                      </manifestEntries>
+                    </transformer>
+<!--                     <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer"> -->
+<!--                       <resource>META-INF/services/io.vertx.core.spi.VerticleFactory</resource> -->
+<!--                     </transformer> -->
+                    <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                  </transformers>
+                  <artifactSet />
+<!--                   <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar</outputFile> -->
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
   </build>
 </project>
