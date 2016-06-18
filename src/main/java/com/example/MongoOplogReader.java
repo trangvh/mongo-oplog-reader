@@ -111,8 +111,8 @@ public class MongoOplogReader {
 //                                            .cursorType(CursorType.Tailable)
 //				                              .cursorType(CursorType.NonTailable)
 				                              .noCursorTimeout(true)
-				                              .maxTime(10, SECONDS)
-				                              .maxAwaitTime(20, SECONDS)
+//				                              .maxTime(10, SECONDS)
+//				                              .maxAwaitTime(20, SECONDS)
 				                              .iterator();
 		while (cursor.hasNext()) {
 			Document document = cursor.next();

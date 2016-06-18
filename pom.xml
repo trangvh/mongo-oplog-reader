@@ -14,14 +14,19 @@
   <name>Mongo Oplog Reader</name>
   <properties>
     <exec.mainClass>com.example.MongoOplogReader</exec.mainClass>
+    <!--
     <embed.mongo.version>1.50.5</embed.mongo.version>
     <org.mongodb.version>3.2.2</org.mongodb.version>
+    -->
+    <embed.mongo.version>1.50.1</embed.mongo.version>
+    <org.mongodb.version>3.0.2</org.mongodb.version>
   </properties>
 <!--   <dependencyManagement> -->
     <dependencies>
       <dependency>
         <groupId>org.mongodb</groupId>
-        <artifactId>mongodb-driver</artifactId>
+        <!--artifactId>mongodb-driver</artifactId-->
+        <artifactId>mongo-java-driver</artifactId>
         <version>${org.mongodb.version}</version>
       </dependency>
        <dependency>
