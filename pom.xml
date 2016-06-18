@@ -20,6 +20,7 @@
     -->
     <embed.mongo.version>1.50.1</embed.mongo.version>
     <org.mongodb.version>3.0.2</org.mongodb.version>
+    <org.slf4j.version>1.7.10</org.slf4j.version>
   </properties>
 <!--   <dependencyManagement> -->
     <dependencies>
@@ -34,6 +35,12 @@
         <artifactId>de.flapdoodle.embed.mongo</artifactId>
         <version>${embed.mongo.version}</version>
       </dependency>
+    <!-- SLF4JLogger for Embedded Mongo -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>${org.slf4j.version}</version>
+    </dependency>
     </dependencies>
 <!--   </dependencyManagement> -->
   <build>
@@ -84,7 +91,7 @@
                     <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
                   </transformers>
                   <artifactSet />
-<!--                   <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar</outputFile> -->
+                  <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar</outputFile>
                 </configuration>
               </execution>
             </executions>
