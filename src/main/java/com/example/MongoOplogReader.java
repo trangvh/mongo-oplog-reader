@@ -7,15 +7,22 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.bson.types.BSONTimestamp;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.Block;
+import com.mongodb.Bytes;
 import com.mongodb.CursorType;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.CreateCollectionOptions;
 
 import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
@@ -47,7 +54,8 @@ public class MongoOplogReader {
 	
 	private static MongoDatabase localDB;
 	
-	private static String OPLOG = "oplog.$main";
+//	private static String OPLOG_MASTER = "oplog.$main";
+	private static String OPLOG = "oplog.rs";
 	
 	private static MongoCollection<Document> oplog;
 	
@@ -55,13 +63,22 @@ public class MongoOplogReader {
 	
 	private static BsonTimestamp lastTimeStamp = null;
 	
+	private static BSONTimestamp lastTS_old = null;
+	
 	public static void main(String[] args) {
-      initEmbedMongo();
+//      initEmbedMongo();
+	  connectMongo();
       initData();
-      testOplog();
+//      testOplog();
+//      readOplogThread();
+      readOplogDBCursor();
       stopMongo();
 	}
 
+	private static void connectMongo() {
+	  mongoClient = new MongoClient(new MongoClientURI(DEFAULT_CONNECTION_STRING + "27017"));
+	}
+	
 	private static void testOplog() {
 	  try {	
       //
@@ -89,7 +106,7 @@ public class MongoOplogReader {
 
 	private static void stopMongo() {
       db.drop();
-	  MONGO.stop();
+//	  MONGO.stop();
 	}
 
 	private static List<Document> readOplog() throws Exception {
@@ -130,10 +147,103 @@ public class MongoOplogReader {
 		return opLogList;
 	}
 
+	private static void readOplogThread() {
+		List<Document> opLogList = new ArrayList<>();
+
+		Document filter = new Document();
+		filter.put("ns", db.getName() + "." + COLNAME);
+		filter.put("op", new Document("$in", Arrays.asList("i", "u", "d")));
+		if (lastTimeStamp != null) {
+			filter.put("ts", new Document("$gt", lastTimeStamp));
+		}
+		Document projection = new Document("ts", 1).append("op", 1).append("o", 1);
+		Document sort = new Document("$natural", 1);
+
+//	try(	
+		MongoCursor<Document> cursor = oplog.find(filter)
+				                              .projection(projection)
+//				                              .batchSize(15)
+				                              .sort(sort)
+//                                              .cursorType(CursorType.TailableAwait)
+                                              .cursorType(CursorType.Tailable)
+//				                              .cursorType(CursorType.NonTailable)
+				                              .noCursorTimeout(true)
+//				                              .maxTime(2, SECONDS)
+//				                              .maxAwaitTime(20, SECONDS)
+				                              .iterator();
+//	{
+	Runnable task = () -> {
+		  System.out.println("--- before iteration");
+		while (cursor.hasNext()) {
+//			Thread.sleep(20000);
+			Document document = cursor.next();
+			if (document == null) break;
+			opLogList.add(document);
+			lastTimeStamp = (BsonTimestamp) document.get("ts");
+			 System.out.println("user: " + ((Document) document.get("o")).get("name") +
+			 " - op: " + document.get("op"));
+		}
+		System.out.println("--- end iteration");
+		System.out.println("#items read = " + opLogList.size());
+	};
+		
+		new Thread(task).start();
+//	} catch (Exception e) {
+//	  e.printStackTrace();
+//	}
+		
+	}
+
+	private static void readOplogDBCursor() {
+		List<DBObject> opLogList = new ArrayList<>();
+
+		DBObject filter = new BasicDBObject();
+		filter.put("ns", db.getName() + "." + COLNAME);
+		filter.put("op", new BasicDBObject("$in", Arrays.asList("i", "u", "d")));
+		if (lastTS_old != null) {
+			filter.put("ts", new BasicDBObject("$gt", lastTS_old));
+		}
+		DBObject projection = new BasicDBObject("ts", 1).append("op", 1).append("o", 1);
+		DBObject sort = new BasicDBObject("$natural", 1);
+
+		DBCollection oplog_old = mongoClient.getDB(LOCALDB).getCollection(OPLOG);
+//		DBCollection db_old = mongoClient.getDB(DB_NAME).getCollection(COLNAME);
+		
+//	try(	
+		System.out.println("#items in oplog = " + oplog_old.count(filter));
+		DBCursor cursor = oplog_old
+								   .find(filter, projection)
+//								   .find()
+//			                       .batchSize(15)
+			                       .addOption(Bytes.QUERYOPTION_TAILABLE | Bytes.QUERYOPTION_AWAITDATA)
+			                       .sort(sort);
+
+//	{
+	Runnable task = () -> {
+        System.out.println("--- before iteration w/ DBCursor non-tailable");
+		while (cursor.hasNext()) {
+			DBObject document = cursor.next();
+			opLogList.add(document);
+			lastTS_old = (BSONTimestamp) document.get("ts");
+			 System.out.println("user: " + ((DBObject) document.get("o")).get("name") +
+			 " - op: " + document.get("op"));
+		}
+		System.out.println("--- end iteration");
+		System.out.println("#items read = " + opLogList.size());
+	};
+		
+		new Thread(task).start();
+//	} catch (Exception e) {
+//	  e.printStackTrace();
+//	}
+		
+	}
+	
 	private static void initData() {
 	    db = mongoClient.getDatabase(DB_NAME);
 	    oplog = mongoClient.getDatabase(LOCALDB).getCollection(OPLOG);
 	    db.createCollection(COLNAME);
+//	    db.createCollection(COLNAME, new CreateCollectionOptions().capped(true).sizeInBytes(20000));
 	    for (int i = 0; i < DOCNUM; i++) {
 	      db.getCollection(COLNAME).insertOne(new Document().append("name", "user " + (i + 1))
 	                                                        .append("age", 18 + i));
