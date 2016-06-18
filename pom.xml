@@ -10,24 +10,23 @@
   <groupId>com.example</groupId>
   <artifactId>oplog-reader</artifactId>
   <version>1.0-SNAPSHOT</version>
-  <!--packaging>pom</packaging-->
   <name>Mongo Oplog Reader</name>
   <properties>
     <exec.mainClass>com.example.MongoOplogReader</exec.mainClass>
-    <!--
     <embed.mongo.version>1.50.5</embed.mongo.version>
     <org.mongodb.version>3.2.2</org.mongodb.version>
-    -->
-    <embed.mongo.version>1.50.1</embed.mongo.version>
-    <org.mongodb.version>3.0.2</org.mongodb.version>
-    <org.slf4j.version>1.7.10</org.slf4j.version>
+    <!--embed.mongo.version>1.50.1</embed.mongo.version-->
+    <!-- java-driver used in embed.mongo 1.50.1 -->
+    <!--org.mongodb.version>3.0.2</org.mongodb.version--> 
+    <!--org.slf4j.version>1.7.10</org.slf4j.version-->
+    <org.slf4j.version>1.7.12</org.slf4j.version>
   </properties>
 <!--   <dependencyManagement> -->
     <dependencies>
       <dependency>
         <groupId>org.mongodb</groupId>
-        <!--artifactId>mongodb-driver</artifactId-->
-        <artifactId>mongo-java-driver</artifactId>
+        <artifactId>mongodb-driver</artifactId>
+        <!--artifactId>mongo-java-driver</artifactId-->
         <version>${org.mongodb.version}</version>
       </dependency>
        <dependency>
