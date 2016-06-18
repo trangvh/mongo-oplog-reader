@@ -104,23 +104,29 @@ public class MongoOplogReader {
 		Document projection = new Document("ts", 1).append("op", 1).append("o", 1);
 		Document sort = new Document("$natural", 1);
 
+	try(	
 		MongoCursor<Document> cursor = oplog.find(filter)
 				                              .projection(projection)
-				                              .sort(sort)
-                                            .cursorType(CursorType.TailableAwait)
-//                                            .cursorType(CursorType.Tailable)
+				                              .batchSize(15)
+//				                              .sort(sort)
+//                                            .cursorType(CursorType.TailableAwait)
+                                              .cursorType(CursorType.Tailable)
 //				                              .cursorType(CursorType.NonTailable)
 				                              .noCursorTimeout(true)
-//				                              .maxTime(10, SECONDS)
+//				                              .maxTime(2, SECONDS)
 //				                              .maxAwaitTime(20, SECONDS)
-				                              .iterator();
+				                              .iterator())//;
+	{
 		while (cursor.hasNext()) {
-			Document document = cursor.next();
+			Thread.sleep(20000);
+			Document document = cursor.tryNext();
+			if (document == null) break;
 			opLogList.add(document);
 			lastTimeStamp = (BsonTimestamp) document.get("ts");
 			 System.out.println("user: " + ((Document) document.get("o")).get("name") +
 			 " - op: " + document.get("op"));
 		}
+	}
 		return opLogList;
 	}
 
