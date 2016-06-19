@@ -46,7 +46,7 @@ public class MongoOplogReader {
 	
 	private static MongoDatabase db;
 	
-	private static String DB_NAME = "test_db";
+	private static String DB_NAME = "test_db2";
 	
 	private static String COLNAME = "test_collection";
 	
@@ -54,12 +54,12 @@ public class MongoOplogReader {
 	
 	private static MongoDatabase localDB;
 	
-//	private static String OPLOG_MASTER = "oplog.$main";
+//	private static String OPLOG = "oplog.$main";
 	private static String OPLOG = "oplog.rs";
 	
 	private static MongoCollection<Document> oplog;
 	
-	private static int DOCNUM = 5;
+	private static int DOCNUM = 3;
 	
 	private static BsonTimestamp lastTimeStamp = null;
 	
@@ -72,7 +72,7 @@ public class MongoOplogReader {
 //      testOplog();
 //      readOplogThread();
       readOplogDBCursor();
-      stopMongo();
+//      stopMongo();
 	}
 
 	private static void connectMongo() {
@@ -105,8 +105,8 @@ public class MongoOplogReader {
 	}
 
 	private static void stopMongo() {
-      db.drop();
-//	  MONGO.stop();
+//      db.drop();
+	  MONGO.stop();
 	}
 
 	private static List<Document> readOplog() throws Exception {
@@ -135,13 +135,14 @@ public class MongoOplogReader {
 				                              .iterator())//;
 	{
 		while (cursor.hasNext()) {
-			Thread.sleep(20000);
+//			Thread.sleep(20000);
 			Document document = cursor.tryNext();
 			if (document == null) break;
 			opLogList.add(document);
 			lastTimeStamp = (BsonTimestamp) document.get("ts");
-			 System.out.println("user: " + ((Document) document.get("o")).get("name") +
+			System.out.println("user: " + ((Document) document.get("o")).get("name") +
 			 " - op: " + document.get("op"));
+		    Thread.sleep(500);
 		}
 	}
 		return opLogList;
@@ -168,6 +169,7 @@ public class MongoOplogReader {
                                               .cursorType(CursorType.Tailable)
 //				                              .cursorType(CursorType.NonTailable)
 				                              .noCursorTimeout(true)
+//				                              .oplogReplay(true)
 //				                              .maxTime(2, SECONDS)
 //				                              .maxAwaitTime(20, SECONDS)
 				                              .iterator();
@@ -207,47 +209,58 @@ public class MongoOplogReader {
 		DBObject sort = new BasicDBObject("$natural", 1);
 
 		DBCollection oplog_old = mongoClient.getDB(LOCALDB).getCollection(OPLOG);
-//		DBCollection db_old = mongoClient.getDB(DB_NAME).getCollection(COLNAME);
 		
-//	try(	
+	try {
 		System.out.println("#items in oplog = " + oplog_old.count(filter));
 		DBCursor cursor = oplog_old
 								   .find(filter, projection)
-//								   .find()
 //			                       .batchSize(15)
 			                       .addOption(Bytes.QUERYOPTION_TAILABLE | Bytes.QUERYOPTION_AWAITDATA)
+			                       .addOption(Bytes.QUERYOPTION_NOTIMEOUT)
 			                       .sort(sort);
 
-//	{
 	Runnable task = () -> {
-        System.out.println("--- before iteration w/ DBCursor non-tailable");
-		while (cursor.hasNext()) {
-			DBObject document = cursor.next();
+        System.out.println("--- before iteration w/ tailable DBCursor");
+        while(true) {
+			DBObject document = cursor.tryNext();
+			if (document == null) break;
 			opLogList.add(document);
 			lastTS_old = (BSONTimestamp) document.get("ts");
-			 System.out.println("user: " + ((DBObject) document.get("o")).get("name") +
+			System.out.println("user: " + ((DBObject) document.get("o")).get("name") +
 			 " - op: " + document.get("op"));
-		}
+		} // while
 		System.out.println("--- end iteration");
 		System.out.println("#items read = " + opLogList.size());
 	};
 		
 		new Thread(task).start();
-//	} catch (Exception e) {
-//	  e.printStackTrace();
-//	}
+	} catch (Exception e) {
+	  e.printStackTrace();
+	}
 		
 	}
 	
 	private static void initData() {
 	    db = mongoClient.getDatabase(DB_NAME);
 	    oplog = mongoClient.getDatabase(LOCALDB).getCollection(OPLOG);
-	    db.createCollection(COLNAME);
+	    if (!db.listCollectionNames().into(new ArrayList<String>()).contains(COLNAME))
+	      db.createCollection(COLNAME);
 //	    db.createCollection(COLNAME, new CreateCollectionOptions().capped(true).sizeInBytes(20000));
+	    
+	    long curSeconds = System.currentTimeMillis()/1000;
+	    lastTS_old = new BSONTimestamp(((Number) curSeconds).intValue(), 0);
+	    System.out.println("lastTS_old = " + lastTS_old);
+	    lastTimeStamp = new BsonTimestamp(lastTS_old.getTime(), lastTS_old.getInc());
+	    
 	    for (int i = 0; i < DOCNUM; i++) {
-	      db.getCollection(COLNAME).insertOne(new Document().append("name", "user " + (i + 1))
-	                                                        .append("age", 18 + i));
+	      Document doc = new Document();
+	      doc.put("name", "user " + (i + 1));
+          doc.put("age", 18 + i);
+	      db.getCollection(COLNAME).insertOne(doc);
 	    }
+
+//	    Document filter = new Document("ts", new Document("$gt", lastTimeStamp));
+//	    FindIterable<Document> iter = db.getCollection(COLNAME).find(filter);
 	    FindIterable<Document> iter = db.getCollection(COLNAME).find();
 	    iter.forEach(new Block<Document>() {
 	      @Override
