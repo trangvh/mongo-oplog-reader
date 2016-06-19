@@ -54,8 +54,8 @@ public class MongoOplogReader {
 	
 	private static MongoDatabase localDB;
 	
-//	private static String OPLOG = "oplog.$main";
-	private static String OPLOG = "oplog.rs";
+	private static String OPLOG = "oplog.$main";
+//	private static String OPLOG = "oplog.rs";
 	
 	private static MongoCollection<Document> oplog;
 	
@@ -66,13 +66,13 @@ public class MongoOplogReader {
 	private static BSONTimestamp lastTS_old = null;
 	
 	public static void main(String[] args) {
-//      initEmbedMongo();
-	  connectMongo();
+      initEmbedMongo();
+//	  connectMongo();
       initData();
       testOplog();
 //      readOplogThread();
 //      readOplogDBCursor();
-//      stopMongo();
+      stopMongo();
 	}
 
 	private static void connectMongo() {
@@ -253,7 +253,7 @@ public class MongoOplogReader {
 	    
 	    long curSeconds = System.currentTimeMillis()/1000;
 	    lastTS_old = new BSONTimestamp(((Number) curSeconds).intValue(), 0);
-	    System.out.println("lastTS_old = " + lastTS_old);
+	    System.out.println("lastTS_old = " + lastTS_old.getTime());
 	    lastTimeStamp = new BsonTimestamp(lastTS_old.getTime(), lastTS_old.getInc());
 	    
 	    for (int i = 0; i < DOCNUM; i++) {
