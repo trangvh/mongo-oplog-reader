@@ -69,9 +69,9 @@ public class MongoOplogReader {
 //      initEmbedMongo();
 	  connectMongo();
       initData();
-//      testOplog();
+      testOplog();
 //      readOplogThread();
-      readOplogDBCursor();
+//      readOplogDBCursor();
 //      stopMongo();
 	}
 
@@ -124,17 +124,19 @@ public class MongoOplogReader {
 	try(	
 		MongoCursor<Document> cursor = oplog.find(filter)
 				                              .projection(projection)
-				                              .batchSize(15)
-//				                              .sort(sort)
-//                                            .cursorType(CursorType.TailableAwait)
-                                              .cursorType(CursorType.Tailable)
+//				                              .batchSize(15)
+				                              .sort(sort)
+                                              .cursorType(CursorType.TailableAwait)
+//                                              .cursorType(CursorType.Tailable)
 //				                              .cursorType(CursorType.NonTailable)
 				                              .noCursorTimeout(true)
 //				                              .maxTime(2, SECONDS)
 //				                              .maxAwaitTime(20, SECONDS)
 				                              .iterator())//;
 	{
-		while (cursor.hasNext()) {
+		System.out.println("--- before iterating in readOplog, #items to read = " + oplog.count(filter));
+//		while (cursor.hasNext()) {
+		while (true) {
 //			Thread.sleep(20000);
 			Document document = cursor.tryNext();
 			if (document == null) break;
@@ -142,8 +144,10 @@ public class MongoOplogReader {
 			lastTimeStamp = (BsonTimestamp) document.get("ts");
 			System.out.println("user: " + ((Document) document.get("o")).get("name") +
 			 " - op: " + document.get("op"));
-		    Thread.sleep(500);
+//		    Thread.sleep(500);
 		}
+		System.out.println("--- finish the iteration");
+//		System.out.println("#items read = " + opLogList.size());
 	}
 		return opLogList;
 	}
